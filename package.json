@@ -1,0 +1,19 @@
+{
+  "name": "flashcard-generator",
+  "version": "1.0.0",
+  "description": "flashcard generator with nodejs",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ndoe"
+  ],
+  "author": "Michael Olie",
+  "license": "ISC",
+  "devDependencies": {
+    "file-system": "^2.2.2",
+    "fs": "0.0.1-security",
+    "inquirer": "^3.0.6"
+  }
+}
