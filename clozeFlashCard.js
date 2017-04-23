@@ -1,9 +1,6 @@
-//third input field accept text and cloze arguments
-
 var ClozeFlashcard = function(text, cloze) {
     this.text = text;
     this.cloze = cloze;
-
     this.showtext = function() {
         console.log(this.text);
     }

@@ -15,5 +15,9 @@
     "file-system": "^2.2.2",
     "fs": "0.0.1-security",
     "inquirer": "^3.0.6"
+  },
+  "dependencies": {
+    "path": "^0.12.7",
+    "readline-specific": "^1.0.4"
   }
 }
