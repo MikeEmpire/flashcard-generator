@@ -1,12 +1,12 @@
 var inquirer = require('inquirer'),
     file = require('file-system'),
     fs = require('fs'),
-    path = require('path'),
     rl = require('readline-specific'),
     BasicCard = require("./basicCard.js"),
     ClozeFlashCard = require("./clozeFlashCard.js"),
     ui = new inquirer.ui.BottomBar(),
-    firstPresident = new BasicCard('Who are you?', 'Michael'),
+    sloc = require('sloc'),
+    basicContents = fs.readFileSync('basic.txt', 'utf8'),
     content;
 
 var createSpecificCard = {
@@ -34,11 +34,12 @@ function createBasicCard() {
             message: 'What would you like on the back of your card?'
         }
     ]).then(function(answers) {
-        if (fs.existsSync('.basic.txt')) {
-            fs.appendFile('./basic.txt', answers.basicFrontCard + " ? " + answers.basicBackCard + '\n', function(err) {
+        if (fs.existsSync('./basic.txt')) {
+            fs.appendFile('./basic.txt', answers.basicFrontCard + "+" + answers.basicBackCard + '\n', function(err) {
                 if (err) {
                     console.log(err);
                 }
+                ui.log.write('a new basic card has been created');
             })
         } else {
             fs.writeFile('./basic.txt', answers.basicFrontCard + "+" + answers.basicBackCard + '\n', function(err) {
@@ -70,26 +71,82 @@ function handleStudyResponse(answers) {
         choices: ['Cloze', 'Basic']
     }]).then(function(answers) {
         var studyCard = answers.studyChoice;
-        if (studyCard == 'Cloze') {
-            handleClozeResponse();
-        } else {
-            handleBasicResponse();
+        if (studyCard == 'Cloze') { handleClozeResponse(); } else { handleBasicResponse(); }
+    })
+}
+
+function printBasicCards() {
+    rl.alllines('./basic.txt', function(err, res) {
+        if (err) { console.log(err) } else {
+            console.log(res);
+            ui.log.write('Console will clear and exit in 30 seconds');
+            setTimeout(function() {
+                console.log('\033[2J');
+                process.exit();
+            }, 30000)
         }
     })
 }
 
+function printClozeCards() {
+    rl.alllines('./cloze.txt', function(err, res) {
+        if (err) { console.log(err) } else {
+            console.log(res);
+            ui.log.write('Console will clear and exit in 30 seconds');
+            setTimeout(function() {
+                console.log('\033[2J');
+                process.exit();
+            }, 30000)
+        }
+    })
+}
+
+
 function handleBasicResponse(answers) {
     rl.oneline('./basic.txt', 1, function(err, res) {
-        if (err) { console.error(err) } //handling error
-        else if (res === '') { createBasicCard(); } //print content
-        else {}
+        if (err) { console.error(err) } else if (res === '') { createBasicCard(); } else { printBasicCards(); }
     })
 }
 
 function handleClozeResponse(answers) {
     rl.oneline('./cloze.txt', 1, function(err, res) {
-        if (err) { console.error(err) } //handling error
-        else if (res === '') { createClozeCard(); } //print content
+        if (err) { console.error(err) } else if (res === '') { createClozeCard(); } else { printClozeCards(); } //print content
+    })
+}
+
+function printMoreCards() {
+    inquirer.prompt([{
+        type: 'confirm',
+        name: 'MoreCards',
+        message: 'Do you want to create more study cards? (Press Enter to create another card.)',
+        default: true
+    }]).then(function(answers) {
+        if (answers.MoreCards) {
+            createCard();
+        } else { process.exit(); }
+    })
+}
+
+function getClozeCard() {
+    rl.alllines('./cloze.txt', function(err, res) {
+        var numOfLines = res.all.split(/\r\n|\r|\n/).length - 1;
+        var array = Object.keys(res.row).map(function(key) { return res.row[key]; });
+        var x = numOfLines;
+        array[x] = array[x].replace('+', ' ');
+
+        if (err) {
+            console.error(err)
+        } else {
+            inquirer.prompt([{
+                type: 'list',
+                name: 'ClozeCard',
+                message: 'Choose a Cloze Card to study',
+                choices: array
+            }]).then(function(answers) {
+                var clozeChoice = answers.ClozeCard;
+                console.log(clozeChoice);
+            })
+        }
     })
 }
 
@@ -97,25 +154,29 @@ function createClozeCard() {
     ui.log.write('You are about to create a cloze card. A cloze card  will allow you to delete a portion of the card so that you can remember that portion of that card.');
     inquirer.prompt([{
         type: 'input',
-        name: 'frontClozeCard',
+        name: 'whole',
         message: 'What do you want on the front of the card?'
     }, {
         type: 'input',
         name: 'partial',
-        message: 'What do you want to put on the back of the card?'
+        message: 'What part of the card do you want to delete?',
+        validate: function(value) {
+            var pass = value.indexOf();
+            console.log(value);
+            if (pass) {
+                return true
+            } else { console.log('input does not match') }
+        }
     }]).then(function(answers) {
         if (fs.existsSync('./cloze.txt')) {
-            fs.appendFile('./cloze.txt', answers.frontClozeCard + '+' + answers.backClozeCard + "\n", function(err) {
-                if (err) {
-                    console.log(err);
-                } else {}
+            var partialCard = answers.whole.replace(answers.partial, '...');
+            fs.appendFile('./cloze.txt', partialCard + '+' + answers.partial + "\n", function(err) {
+                if (err) { console.log(err); } else { printMoreCards(); }
             })
             console.log('adding new content to cloze txt');
         } else {
-            fs.writeFile('./cloze.txt', answers.frontClozeCard + "+" + answers.backClozeCard + "\n", function(err) {
-                if (err) {
-                    console.log(err);
-                }
+            fs.writeFile('./cloze.txt', answers.whole + "+" + answers.partial + "\n", function(err) {
+                if (err) { console.log(err); } else { printMoreCards(); }
                 ui.log.write('Cloze Card is created');
             })
         }
@@ -125,11 +186,7 @@ function createClozeCard() {
 function createCard() {
     inquirer.prompt(createSpecificCard).then(function(answers) {
         var choice = answers.cardCreation;
-        if (choice === 'Basic') {
-            createBasicCard();
-        } else if (choice === 'Cloze') {
-            createClozeCard();
-        }
+        if (choice === 'Basic') { createBasicCard(); } else if (choice === 'Cloze') { createClozeCard(); }
     })
 }
 
@@ -138,9 +195,7 @@ function createCard() {
     if (fs.existsSync('./cloze.txt')) {
         inquirer.prompt(startFlashCards).then(function(answers) {
             var nChoice = answers.startGame;
-            if (nChoice === 'Study') {
-                handleStudyResponse();
-            } else if (nChoice === 'Create') { createCard() } else {}
+            if (nChoice === 'Study') { handleStudyResponse(); } else if (nChoice === 'Create') { createCard() } else {}
         });
     }
 }())
